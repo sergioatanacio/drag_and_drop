@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Misión Espacial</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: url('https://cdnjs.cloudflare.com/ajax/libs/simple-icons/3.0.1/starship.svg') repeat, linear-gradient(to bottom, #000033, #000066);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        #juego {
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+        }
+        #recursos, #nave {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+        .recurso, .compartimento {
+            width: 60px;
+            height: 60px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            cursor: move;
+            transition: transform 0.2s;
+            background-size: cover;
+        }
+        .recurso:hover, .compartimento:hover {
+            transform: scale(1.1);
+        }
+        .compartimento {
+            border: 2px dashed #4CAF50;
+            background-color: rgba(76, 175, 80, 0.3);
+        }
+        #info {
+            font-size: 18px;
+            margin-top: 20px;
+        }
+        #mensajes {
+            height: 50px;
+            margin-top: 10px;
+            font-style: italic;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .estrella {
+            position: absolute;
+            background-color: white;
+            width: 2px;
+            height: 2px;
+            border-radius: 50%;
+        }
+        @keyframes parpadeo {
+            0% { opacity: 0; }
+            50% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div id="juego">
+        <h1>Misión Espacial</h1>
+        <p>Carga los recursos en la nave espacial antes de que se agote el tiempo!</p>
+        <div id="recursos"></div>
+        <div id="nave"></div>
+        <div id="info">
+            <p>Combustible: <span id="combustible">100</span>%</p>
+            <p>Tiempo: <span id="tiempo">60</span> segundos</p>
+        </div>
+        <div id="mensajes"></div>
+        <button onclick="iniciarJuego()">Iniciar Misión</button>
+    </div>
+
+    <script>
+        const recursos = ['🪨', '💧', '🔋', '🌱', '🧪'];
+        const colores = ['#8B4513', '#1E90FF', '#FFD700', '#32CD32', '#FF69B4'];
+        let combustible = 100;
+        let tiempoRestante = 60;
+        let temporizador;
+        let misionIniciada = false;
+
+        function crearEstrellas() {
+            for (let i = 0; i < 100; i++) {
+                let estrella = document.createElement('div');
+                estrella.classList.add('estrella');
+                estrella.style.left = `${Math.random() * 100}vw`;
+                estrella.style.top = `${Math.random() * 100}vh`;
+                estrella.style.animation = `parpadeo ${Math.random() * 3 + 1}s infinite`;
+                document.body.appendChild(estrella);
+            }
+        }
+
+        function crearRecursos() {
+            const recursosDiv = document.getElementById('recursos');
+            recursosDiv.innerHTML = '';
+            recursos.forEach((recurso, index) => {
+                const div = document.createElement('div');
+                div.className = 'recurso';
+                div.textContent = recurso;
+                div.draggable = true;
+                div.style.backgroundColor = colores[index];
+                div.addEventListener('dragstart', iniciarArrastre);
+                recursosDiv.appendChild(div);
+            });
+        }
+
+        function crearNave() {
+            const naveDiv = document.getElementById('nave');
+            naveDiv.innerHTML = '';
+            for (let i = 0; i < 5; i++) {
+                const compartimento = document.createElement('div');
+                compartimento.className = 'compartimento';
+                compartimento.addEventListener('dragover', permitirSoltar);
+                compartimento.addEventListener('drop', soltarRecurso);
+                naveDiv.appendChild(compartimento);
+            }
+        }
+
+        function iniciarArrastre(e) {
+            e.dataTransfer.setData('text/plain', e.target.textContent);
+        }
+
+        function permitirSoltar(e) {
+            e.preventDefault();
+        }
+
+        function soltarRecurso(e) {
+            e.preventDefault();
+            if (!misionIniciada) return;
+            const data = e.dataTransfer.getData('text');
+            if (this.textContent === '') {
+                this.textContent = data;
+                this.style.backgroundColor = colores[recursos.indexOf(data)];
+                actualizarCombustible(10);
+                mostrarMensaje('¡Recurso cargado! +10% combustible');
+                if (document.querySelectorAll('.compartimento:not(:empty)').length === 5) {
+                    finalizarMision(true);
+                }
+            }
+        }
+
+        function actualizarCombustible(cambio) {
+            combustible = Math.max(0, Math.min(100, combustible + cambio));
+            document.getElementById('combustible').textContent = combustible;
+            if (combustible <= 0) {
+                finalizarMision(false);
+            }
+        }
+
+        function actualizarTiempo() {
+            tiempoRestante--;
+            document.getElementById('tiempo').textContent = tiempoRestante;
+            actualizarCombustible(-1);
+            if (tiempoRestante <= 0) {
+                finalizarMision(false);
+            }
+        }
+
+        function mostrarMensaje(mensaje) {
+            document.getElementById('mensajes').textContent = mensaje;
+        }
+
+        function finalizarMision(exito) {
+            clearInterval(temporizador);
+            misionIniciada = false;
+            if (exito) {
+                mostrarMensaje('¡Misión cumplida! La nave está lista para el despegue.');
+            } else {
+                mostrarMensaje('Misión fallida. No hay suficiente combustible o tiempo.');
+            }
+        }
+
+        function iniciarJuego() {
+            combustible = 100;
+            tiempoRestante = 60;
+            document.getElementById('combustible').textContent = combustible;
+            document.getElementById('tiempo').textContent = tiempoRestante;
+            crearRecursos();
+            crearNave();
+            clearInterval(temporizador);
+            temporizador = setInterval(actualizarTiempo, 1000);
+            misionIniciada = true;
+            mostrarMensaje('¡La misión ha comenzado! Carga los recursos rápidamente.');
+        }
+
+        crearEstrellas();
+        iniciarJuego();
+    </script>
+</body>
+</html>
